@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-// ISP: Interfacce separate R/W
-//      Il design è sbagliato
+// Nuovo Design con interfacce
 
 namespace SolidButNotTooMuch_8B
 {
@@ -64,208 +63,141 @@ namespace SolidButNotTooMuch_8B
 
     #endregion
 
-    public interface IRepositoryReader
-    {
-        string GetUser(string name);
-    }
+    #region Util
 
-    public interface IRepositoryWriter
+    public static class Util
     {
-        void Add(User user);
-    }
-
-    public interface IRepository : IRepositoryReader, IRepositoryWriter
-    {
-        void Update(User user);
-        User Delete(string name);
-    }
-
-    public class Repository : IRepository
-    {
-        private readonly IRepositoryReader _repoReader;
-        private readonly IRepositoryWriter _repoWriter;
-
-        public Repository(IRepositoryReader repoReader, IRepositoryWriter repoWriter)
+        public static string NewPhoneNumber()
         {
-            _repoReader = repoReader;
-            _repoWriter = repoWriter;
+            return "339" + GetDigits();
         }
 
-        public void Add(User user)
+        private static string GetDigits()
         {
-            _repoWriter.Add(user);    
-        }
+            var digits = "";
+            for (int i = 0; i < 8; i++)
+            {
+                digits += new Random().Next(0, 9);
+            }
 
-        public User Delete(string name)
-        {
-            // TO-DO
-            return new User();
-        }
-
-        public string GetUser(string name)
-        {
-            return _repoReader.GetUser(name);
-        }
-
-        public void Update(User user)
-        {
-            // TO-DO
+            return digits;
         }
     }
 
-    public class RepositoryReader : IRepositoryReader
+    #endregion
+
+    public class AccountModel
     {
-        public RepositoryReader()
-        {
-        }
-
-        public string GetUser(string name)
-        {
-            Console.WriteLine($"Utente {name} letto da DB");
-            return name;
-        }
-    }
-
-    public class RepositoryWriter : IRepositoryWriter
-    {
-        public RepositoryWriter()
-        {
-
-        }
-
-        public void Add(User user)
-        {
-            Console.WriteLine($"Utente {user.Name} salvato su DB");
-        }
-    }
-
-    public class User
-    {
-        protected ILogger _logger;
-        protected IRepository _repository;
-
-        public INotification Notification { get; set; }
         public string Name { get; set; }
+        public string EmailAddress { get; set; }
+        public string MobilePhoneNumber { get; set; }
+    }
 
-        public User(ILogger logger, IRepository repository)
+    public interface IAccount
+    {
+        AccountModel Add(IUser user);
+    }
+
+    public class StandardAccount : IAccount
+    {
+        public AccountModel Add(IUser user)
         {
-            _logger = logger;
-            _repository = repository;
-        }
+            var account = new AccountModel();
 
-        public User()
-        {
-        }
+            account.Name = user.Name;
+            account.EmailAddress = $"{user.Name}@ff3d.com";
+            account.MobilePhoneNumber = "";
 
-        public virtual void Add()
-        {
-            Console.WriteLine($"<simulazione>: Aggiunto utente {Name}");
-            _repository.Add(this);
-
-            _logger.Log(Name);
-
-            if (Notification != null)
-                Notification.Send();
-        }
-
-        public virtual string Get()
-        {
-            return _repository.GetUser(Name);
+            return account;
         }
     }
 
-    public class SuperUser : User
+    public class SuperAccount : IAccount
     {
-        public bool IsGold { get; set; }
+        public ILogger Logger { get; set; }
 
-        public SuperUser(ILogger logger, IRepository repository) : base(logger, repository)
+        public AccountModel Add(IUser user)
         {
-        }
+            var account = new AccountModel();
 
+            account.Name = user.Name;
+            account.EmailAddress = $"{user.Name}@ff3d.com";
+            account.MobilePhoneNumber = Util.NewPhoneNumber();
 
-        public override void Add()
-        {
-            Console.WriteLine($"<simulazione>: Aggiunto un super utente utente {Name}");
-            _repository.Add(this);
+            if (Logger != null)
+                Logger.Log($"Configurato utente GOLD: {user.Name}");
 
-            _logger.Log(Name);
-
-            if (Notification == null)
-                throw new Exception("E' obbligatorio inviare una notifica ai super utenti");
-        }
-
-        public override string Get()
-        {
-            return base.Get();
+            return account;
         }
     }
 
-    public class BabyUser : User
+    public class BabyAccount : IAccount
     {
-        public BabyUser(ILogger logger, IRepository repository) : base(logger, repository)
+        public AccountModel Add(IUser user)
         {
-        }
+            var account = new AccountModel();
 
-        public override void Add()
+            account.Name = user.Name;
+            account.EmailAddress = $"guest.{user.Name}@guest-ff3d.com";
+            account.MobilePhoneNumber = "";
+
+            return account;
+        }
+    }
+
+    public interface IUser
+    {
+        string Name { get; set; }
+        public IAccount AccountManager { get; set; }
+    }
+
+    public class User : IUser
+    {
+        public string Name { get; set; }
+        public IAccount AccountManager { get; set; } = new StandardAccount();
+    }
+
+    public class SuperUser : IUser
+    {
+        public string Name { get; set; }
+        public IAccount AccountManager { get; set; }
+
+        public SuperUser(ILogger logger)
         {
-            Console.WriteLine($"<simulazione>: Aggiunto un baby utente {Name}");
-            _repository.Add(this);
-
-            _logger.Log(Name);
-
-            if (Notification != null)
-                Notification.Send();
+            // Inizializzo il super account
+            var super = new SuperAccount();
+            super.Logger = logger;
+            AccountManager = super;
         }
+    }
 
-        public override string Get()
-        {
-            // Astrazione 
-            throw new NotImplementedException("I BabyUser possono solo essere memorizzati a sistema");
-        }
+    public class BabyUser : IUser
+    {
+        public string Name { get; set; }
+        public IAccount AccountManager { get; set; } = new BabyAccount();
     }
 
     class Program
     {
-        static void Main_(string[] args)
+        static void Main(string[] args)
         {
-            var users = new List<User>();
-
-            var user = new User(new LoggerFile(), new Repository(new RepositoryReader(),new RepositoryWriter()));
-            user.Notification = new EmailNotification() { EmailAddress = "max@gmail.com" };
-            user.Name = "Max";
-            user.Add();
-            users.Add(user);
-
-            Console.WriteLine();
-
-            var user2 = new User(new LoggerDB(), new Repository(new RepositoryReader(), new RepositoryWriter()));
-            user2.Notification = new SmsNotification() { MobilePhoneNumber = "3391234567" };
-            user2.Name = "Paolo";
-            user2.Add();
-            users.Add(user2);
-
-            Console.WriteLine();
-
-            User user3 = new SuperUser(new LoggerDB(), new Repository(new RepositoryReader(), new RepositoryWriter()));
-            user3.Name = "Domenico";
-            try
+            var users = new List<IUser>()
             {
-                user3.Add();
-                users.Add(user3);
-            }
-            catch (Exception)
+                new User() { Name = "Max" },
+                new SuperUser(new LoggerDB()) { Name = "Paolo" },
+                new BabyUser() { Name = "Domenico" }
+            };
+
+            List<AccountModel> accounts = new List<AccountModel>();
+
+            foreach (var user in users)
             {
-                Console.WriteLine("ROLLBACK: violato il principio LSP");
+                accounts.Add(user.AccountManager.Add(user));
             }
 
-            //*************
-
-
-            Console.WriteLine();
-            Console.WriteLine("---Lista utenti---");
-            foreach (var userList in users)
+            foreach (var account in accounts)
             {
-                Console.WriteLine($"{userList.Name}");
+                Console.WriteLine($"Creato account a {account.Name}. Email: {account.EmailAddress}, Cellulare aziendale: {account.MobilePhoneNumber}");
             }
 
             Console.ReadKey();
