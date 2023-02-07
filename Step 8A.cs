@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 
-// LSP: User vs SuperUser
+// ISP: IRepository e Repository
+//      Creato BabyUser che può solo essere aggiunto a sistema, ma non può essere reperito
 
-namespace SolidButNotTooMuch_7
+namespace SolidButNotTooMuch_8A
 {
     #region Logger
     public interface ILogger
@@ -63,15 +64,40 @@ namespace SolidButNotTooMuch_7
 
     #endregion
 
+    public interface IRepository
+    {
+        string GetUser(string name);
+        void Add(User user);
+    }
+
+    public class Repository : IRepository
+    {
+        public void Add(User user)
+        {
+            Console.WriteLine($"Utente {user.Name} salvato su DB");
+        }
+
+        public string GetUser(string name)
+        {
+            Console.WriteLine($"Utente {name} letto da DB");
+            return name;
+        }
+    }
+
+
+
     public class User
     {
         protected ILogger _logger;
+        protected IRepository _repository;
+
         public INotification Notification { get; set; }
         public string Name { get; set; }
 
-        public User(ILogger logger)
+        public User(ILogger logger, IRepository repository)
         {
             _logger = logger;
+            _repository = repository;
         }
 
         public virtual void Add()
@@ -83,15 +109,19 @@ namespace SolidButNotTooMuch_7
             if (Notification != null)
                 Notification.Send();
         }
+
+        public virtual string Get()
+        {
+            return _repository.GetUser(Name);
+        }
     }
 
     public class SuperUser : User
     {
         public bool IsGold { get; set; }
 
-        public SuperUser(ILogger logger) : base(logger)
+        public SuperUser(ILogger logger, IRepository repository) : base(logger, repository)
         {
-            _logger = logger;
         }
 
 
@@ -104,34 +134,71 @@ namespace SolidButNotTooMuch_7
             if (Notification == null)
                 throw new Exception("E' obbligatorio inviare una notifica ai super utenti");
         }
+
+        public override string Get()
+        {
+            return base.Get();
+        }
+    }
+
+    public class BabyUser : User
+    {
+        public BabyUser(ILogger logger, IRepository repository) : base(logger, repository)
+        {
+        }
+
+        public override void Add()
+        {
+            Console.WriteLine($"<simulazione>: Aggiunto un baby utente {Name}");
+
+            _logger.Log(Name);
+
+            if (Notification != null)
+                Notification.Send();
+        }
+
+        public override string Get()
+        {
+            throw new NotImplementedException("Vorrei non essere disturbato!");
+        }
     }
 
     class Program
     {
         static void Main_(string[] args)
         {
-            var user = new User(new LoggerFile());
+            var users = new List<User>();
+
+            var user = new User(new LoggerFile(), new Repository());
             user.Notification = new EmailNotification() { EmailAddress = "max@gmail.com" };
             user.Name = "Max";
             user.Add();
+            users.Add(user);
 
             Console.WriteLine();
 
-            var user2 = new User(new LoggerDB());
+            var user2 = new User(new LoggerDB(), new Repository());
             user2.Notification = new SmsNotification() { MobilePhoneNumber = "3391234567" };
             user2.Name = "Paolo";
             user2.Add();
+            users.Add(user2);
 
-            User user3 = new SuperUser(new LoggerDB());
+            Console.WriteLine();
+
+            User user3 = new SuperUser(new LoggerDB(), new Repository());
             user3.Name = "Domenico";
-            user3.Add();
+            try
+            {
+                user3.Add();
+                users.Add(user3);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("ROLLBACK: violato il principio LSP");
+            }
 
             //*************
 
-            var users = new List<User>();
-            users.Add(user);
-            users.Add(user2);
-            users.Add(user3);
 
             Console.WriteLine();
             Console.WriteLine("---Lista utenti---");
