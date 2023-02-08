@@ -179,7 +179,7 @@ namespace SolidButNotTooMuch_8B
 
     class Program
     {
-        static void Main(string[] args)
+        static void Main_(string[] args)
         {
             var users = new List<IUser>()
             {
