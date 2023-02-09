@@ -5,4 +5,13 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Pizzeria Bella Napoli\Printer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Pizzeria Bella Napoli\" />
+    <Folder Include="Pizzeria Kebabbaro\" />
+  </ItemGroup>
+
 </Project>
