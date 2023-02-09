@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SolidButNotTooMuch
+namespace SolidButNotTooMuch_Z1
 {
     public class BusinessClass_Accoppiato
     {
@@ -61,6 +61,22 @@ namespace SolidButNotTooMuch
         }
     }
 
+    public interface ISuperModel : IModel
+    {
+        string P4 { get; set; }
+        string P5 { get; set; }
+
+    }
+
+    public class SuperModel : ISuperModel
+    {
+        public string P4 { get; set; }
+        public string P5 { get; set; }
+        public string P1 { get; set; }
+        public string P2 { get; set; }
+        public string P3 { get; set; }
+    }
+
     public class SuperBusinessClass : IBusiness
     {
         private readonly ISuperModel _model;
@@ -96,25 +112,9 @@ namespace SolidButNotTooMuch
         }
     }
 
-    public interface ISuperModel : IModel
-    {
-        string P4 { get; set; }
-        string P5 { get; set; }
-
-    }
-
-    public class SuperModel : ISuperModel
-    {
-        public string P4 { get; set; }
-        public string P5 { get; set; }
-        public string P1 { get; set; }
-        public string P2 { get; set; }
-        public string P3 { get; set; }
-    }
-
     class Program
     {
-        static void Main(string[] args)
+        static void Main_(string[] args)
         {
             var bc = new BusinessClass_Accoppiato("par1", "par2");
             bc.Do();
